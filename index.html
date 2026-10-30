@@ -344,7 +344,7 @@
   .nitem small { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
   .nmsg { margin: 10px 8px; font-size: 12px; line-height: 1.5; color: var(--muted); }
   .ncredit { margin: 8px 8px 2px; font-size: 10px; color: var(--muted); }
-  .nhot { position: fixed; left: 0; top: 0; z-index: 3; padding: 0; border: 1.5px solid rgba(255,90,90,.9); border-radius: 50%; background: radial-gradient(circle, rgba(255,80,80,.55), rgba(255,80,80,.12) 70%); cursor: pointer; display: none;
+  .nhot { touch-action: none; position: fixed; left: 0; top: 0; z-index: 4; padding: 0; border: 1.5px solid rgba(255,90,90,.9); border-radius: 50%; background: radial-gradient(circle, rgba(255,80,80,.55), rgba(255,80,80,.12) 70%); cursor: pointer; display: none;
     box-shadow: 0 0 14px rgba(255,80,80,.6); animation: npulse 2.2s ease-in-out infinite; }
   @keyframes npulse { 50% { box-shadow: 0 0 2px rgba(255,80,80,.3); } }
   @media (prefers-reduced-motion: reduce) { .nhot { animation: none; } }
@@ -3125,7 +3125,14 @@
       if (i >= list.length) { if (el) el.style.display = 'none'; continue; }
       if (!el) {
         el = document.createElement('button'); el.className = 'nhot'; document.body.appendChild(el); news.hotEls[i] = el;
-        el.addEventListener('click', function () { var h = news.hot[+this.dataset.i]; if (!h) return; select({ type: 'country', idx: h.ci }); });
+        // pointerdown: funciona mesmo com o globo girando (o círculo se move entre apertar e soltar)
+        el.addEventListener('pointerdown', function (ev) {
+          ev.preventDefault(); ev.stopPropagation();
+          var h = news.hot[+this.dataset.i]; if (!h) return;
+          pauseSpin(); stopTour(); clearMeasure();
+          select({ type: 'country', idx: h.ci });
+          fitSelection();
+        });
       }
       var h = list[i];
       ll2v(h.lon, h.lat, 1.002, va);
