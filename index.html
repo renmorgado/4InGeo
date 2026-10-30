@@ -554,7 +554,7 @@
         eqearth: ['Equal Earth', 'Preserva as áreas com aparência agradável. Criada em 2018.'], winkel: ['Winkel Tripel', 'Usada pela National Geographic. Pouca distorção no geral.'],
         eq: ['Equiretangular', 'Latitude e longitude em grade regular. Simples e direta.'], merc: ['Mercator', 'Preserva formas e direções, usada na navegação. Aumenta as áreas perto dos polos.'],
         moll: ['Mollweide', 'Preserva as áreas, com o mundo em forma de elipse.'], rob: ['Robinson', 'Equilíbrio entre forma e área. Muito usada em atlas.'] },
-      nw: { title: 'Notícias', world: 'Mundo', loading: 'Carregando notícias…', none: 'Nenhuma notícia encontrada nesse período.', error: 'Não foi possível carregar agora. Tente de novo em instantes.',
+      nw: { title: 'Notícias', world: 'Mundo', loading: 'Carregando notícias…', none: 'Nenhuma notícia encontrada nesse período.', error: 'O GDELT não respondeu agora (o serviço gratuito pode estar ocupado ou limitando pedidos). Nova tentativa automática em 1 minuto.',
         blocked: 'As notícias ao vivo do GDELT só carregam com a página hospedada fora do Claude. Siga o passo a passo do chat para publicar o globo de graça.', ago: 'há %s', credit: 'Fonte: GDELT Project (gdeltproject.org)', h24: '24 h', d7: '7 dias',
         themes: { all: 'Tudo', conflict: 'Conflitos', protest: 'Protestos', election: 'Eleições', economy: 'Economia', energy: 'Energia', diplomacy: 'Diplomacia' } },
       terrT: 'Território e Clima', climate: 'Clima', bTerr: 'Território e Clima (G)', winds: 'Ventos predominantes',
@@ -600,7 +600,7 @@
         eqearth: ['Equal Earth', 'Keeps areas with a pleasant look. Created in 2018.'], winkel: ['Winkel Tripel', 'Used by National Geographic. Low overall distortion.'],
         eq: ['Equirectangular', 'Latitude and longitude on a regular grid. Simple and direct.'], merc: ['Mercator', 'Keeps shapes and directions, used in navigation. Enlarges areas near the poles.'],
         moll: ['Mollweide', 'Keeps areas, with the world shaped as an ellipse.'], rob: ['Robinson', 'Balance between shape and area. Widely used in atlases.'] },
-      nw: { title: 'News', world: 'World', loading: 'Loading news…', none: 'No news found in this period.', error: 'Could not load right now. Try again in a moment.',
+      nw: { title: 'News', world: 'World', loading: 'Loading news…', none: 'No news found in this period.', error: 'GDELT did not respond right now (the free service may be busy or rate-limiting). Retrying automatically in 1 minute.',
         blocked: 'Live GDELT news only load when the page is hosted outside Claude. Follow the steps in the chat to publish the globe for free.', ago: '%s ago', credit: 'Source: GDELT Project (gdeltproject.org)', h24: '24 h', d7: '7 days',
         themes: { all: 'All', conflict: 'Conflicts', protest: 'Protests', election: 'Elections', economy: 'Economy', energy: 'Energy', diplomacy: 'Diplomacy' } },
       terrT: 'Land and Climate', climate: 'Climate', bTerr: 'Land and Climate (G)', winds: 'Prevailing winds',
@@ -646,7 +646,7 @@
         eqearth: ['Equal Earth', 'Conserva las áreas con un aspecto agradable. Creada en 2018.'], winkel: ['Winkel Tripel', 'Usada por National Geographic. Poca distorsión en general.'],
         eq: ['Equirrectangular', 'Latitud y longitud en una cuadrícula regular. Simple y directa.'], merc: ['Mercator', 'Conserva formas y direcciones, usada en navegación. Agranda las áreas cerca de los polos.'],
         moll: ['Mollweide', 'Conserva las áreas, con el mundo en forma de elipse.'], rob: ['Robinson', 'Equilibrio entre forma y área. Muy usada en atlas.'] },
-      nw: { title: 'Noticias', world: 'Mundo', loading: 'Cargando noticias…', none: 'No se encontraron noticias en este período.', error: 'No se pudo cargar ahora. Inténtalo de nuevo en un momento.',
+      nw: { title: 'Noticias', world: 'Mundo', loading: 'Cargando noticias…', none: 'No se encontraron noticias en este período.', error: 'GDELT no respondió ahora (el servicio gratuito puede estar ocupado o limitando pedidos). Nuevo intento automático en 1 minuto.',
         blocked: 'Las noticias en vivo de GDELT solo cargan con la página alojada fuera de Claude. Sigue los pasos del chat para publicar el globo gratis.', ago: 'hace %s', credit: 'Fuente: GDELT Project (gdeltproject.org)', h24: '24 h', d7: '7 días',
         themes: { all: 'Todo', conflict: 'Conflictos', protest: 'Protestas', election: 'Elecciones', economy: 'Economía', energy: 'Energía', diplomacy: 'Diplomacia' } },
       terrT: 'Territorio y Clima', climate: 'Clima', bTerr: 'Territorio y Clima (G)', winds: 'Vientos predominantes',
@@ -2987,6 +2987,7 @@
     diplomacy: '(summit OR sanctions OR diplomat OR treaty OR talks)'
   };
   var NEWS_KEYS = ['all', 'conflict', 'protest', 'election', 'economy', 'energy', 'diplomacy'];
+  var HOT_MAX = 25;
   var HOT = [['United States', 'United States of America'], ['China', "People's Republic of China"], ['Russia', 'Russia'], ['Ukraine', 'Ukraine'], ['Israel', 'Israel'],
     ['(Gaza OR Palestinian)', 'Palestine'], ['Iran', 'Iran'], ['India', 'India'], ['Pakistan', 'Pakistan'], ['Brazil', 'Brazil'], ['United Kingdom', 'United Kingdom'], ['France', 'France'],
     ['Germany', 'Germany'], ['Japan', 'Japan'], ['"South Korea"', 'South Korea'], ['"North Korea"', 'North Korea'], ['Taiwan', 'Taiwan'], ['Turkey', 'Turkey'], ['"Saudi Arabia"', 'Saudi Arabia'],
@@ -3002,20 +3003,50 @@
     if (c && Date.now() - c.t < 15 * 60 * 1000) return Promise.resolve(c.d);
     return new Promise(function (res, rej) { var job = { url: url, res: res, rej: rej }; if (prio) gq.unshift(job); else gq.push(job); pumpG(); });
   }
+  // dentro do Claude a página não pode acessar a internet; fora dele, tenta fetch e, se o navegador barrar, JSONP
+  var IN_CLAUDE = /claude\.ai|claudeusercontent|anthropic/i.test(location.hostname);
+  document.addEventListener('securitypolicyviolation', function (ev) { if (/gdelt/i.test(ev.blockedURI || '')) IN_CLAUDE = true; });
+  var useJsonp = false;
+  function jsonp(url) {
+    return new Promise(function (res, rej) {
+      var cb = '__gdelt' + Date.now() + Math.floor(Math.random() * 1e6), s = document.createElement('script');
+      var to = setTimeout(function () { done(); rej(new Error('tempo esgotado')); }, 25000);
+      function done() { clearTimeout(to); try { delete window[cb]; } catch (e) { window[cb] = undefined; } s.remove(); }
+      window[cb] = function (d) { done(); res(d); };
+      s.onerror = function () { done(); rej(new Error('JSONP recusado')); };
+      s.src = url.replace('format=json&', 'format=jsonp&') + '&callback=' + cb;
+      document.head.appendChild(s);
+    });
+  }
+  function fetchJson(url) {
+    var ctl = window.AbortController ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 25000);
+    return fetch(url, ctl ? { signal: ctl.signal } : {}).then(function (r) {
+      clearTimeout(to);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }).then(function (txt) {
+      var d; try { d = JSON.parse(txt); } catch (e) { d = null; }
+      if (!d) throw new Error((txt || 'resposta vazia').slice(0, 80));
+      return d;
+    });
+  }
   function pumpG() {
     if (gBusy || !gq.length) return;
     var wait = Math.max(0, gLast + 5500 - Date.now());
     gBusy = true;
     setTimeout(function () {
       var job = gq.shift(); gLast = Date.now();
-      fetch(job.url).then(function (r) { return r.text(); }).then(function (txt) {
-        var d; try { d = JSON.parse(txt); } catch (e) { d = null; }
-        if (!d) throw new Error('resposta inválida');
-        gCache[job.url] = { t: Date.now(), d: d }; job.res(d);
-      }).catch(function (e) {
-        if (e && e.name === 'TypeError') { news.blocked = true; gq.forEach(function (j) { j.rej(e); }); gq = []; }
-        job.rej(e);
-      }).then(function () { gBusy = false; pumpG(); });
+      var p = useJsonp ? jsonp(job.url) : fetchJson(job.url).catch(function (e) {
+        if (IN_CLAUDE) throw e;
+        if (e && (e.name === 'TypeError' || e.name === 'AbortError')) { return jsonp(job.url).then(function (d) { useJsonp = true; return d; }); }
+        throw e;
+      });
+      p.then(function (d) { news.lastErr = null; gCache[job.url] = { t: Date.now(), d: d }; job.res(d); })
+        .catch(function (e) {
+          news.lastErr = (e && e.message) || String(e);
+          if (IN_CLAUDE) { news.blocked = true; gq.forEach(function (j) { j.rej(e); }); gq = []; }
+          job.rej(e);
+        }).then(function () { gBusy = false; pumpG(); });
     }, wait);
   }
   function qName(obj) { var n = obj.names[1]; return QNAME[n] || (n.indexOf(' ') > 0 ? '"' + n + '"' : n); }
@@ -3058,7 +3089,12 @@
         var sm = document.createElement('small'); sm.textContent = [a.domain, relTime(a.seendate), a.language].filter(Boolean).join(' · '); li.appendChild(sm);
         ul.appendChild(li);
       });
-    }).catch(function () { if (stamp === news.req) newsMsg(news.blocked ? T.nw.blocked : T.nw.error); });
+    }).catch(function (e) {
+      if (stamp !== news.req || (e && e.message === 'substituída')) return;
+      if (news.blocked) { newsMsg(T.nw.blocked); return; }
+      newsMsg(T.nw.error + (news.lastErr ? ' (' + news.lastErr + ')' : ''));
+      clearTimeout(news.retry); news.retry = setTimeout(loadNews, 60000);
+    });
   }
   news.req = 0;
   // pontos de calor: intensidade de cobertura de cada país (fatia das notícias do mundo)
@@ -3066,7 +3102,7 @@
     if (!layers.news || news.blocked) return;
     var run = ++news.hotRun; news.hot = [];
     gq = gq.filter(function (j) { if (j.url.indexOf('mode=TimelineVol') >= 0) { j.rej(new Error('substituída')); return false; } return true; });
-    HOT.forEach(function (h) {
+    HOT.slice(0, HOT_MAX).forEach(function (h) {
       var ci = -1; COUNTRIES.forEach(function (c, i) { if (c.names[1] === h[1]) ci = i; });
       if (ci < 0) return;
       var q = h[0] + (news.theme !== 'all' ? ' ' + NEWS_THEMES[news.theme] : '');
